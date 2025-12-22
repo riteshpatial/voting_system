@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.19;
 
 contract Voting {
     address public admin;
 
-    enum ElectionState { NotStarted, Active, Ended }
+    enum ElectionState { NotStarted, Ongoing, Ended }
     ElectionState public electionState;
 
     struct Candidate {
-        uint id;
         string name;
-        uint voteCount;
+        uint votes;
     }
 
-    mapping(uint => Candidate) private candidates;
-    uint private candidatesCount;
-
+    Candidate[] public candidates;
     mapping(address => bool) public hasVoted;
 
     modifier onlyAdmin() {
@@ -28,49 +25,51 @@ contract Voting {
         electionState = ElectionState.NotStarted;
     }
 
-    function addCandidate(string memory _name) external onlyAdmin {
+    function addCandidate(string memory _name) public onlyAdmin {
         require(electionState == ElectionState.NotStarted, "Election started");
-        candidatesCount++;
-        candidates[candidatesCount] = Candidate(candidatesCount, _name, 0);
+        candidates.push(Candidate(_name, 0));
     }
 
-    function startElection() external onlyAdmin {
-        require(candidatesCount > 0, "No candidates");
-        electionState = ElectionState.Active;
+    function startElection() public onlyAdmin {
+        require(electionState == ElectionState.NotStarted, "Already started");
+        electionState = ElectionState.Ongoing;
     }
 
-    function vote(uint _id) external {
-        require(electionState == ElectionState.Active, "Not active");
-        require(!hasVoted[msg.sender], "Already voted");
-        require(_id > 0 && _id <= candidatesCount, "Invalid candidate");
-
-        hasVoted[msg.sender] = true;
-        candidates[_id].voteCount++;
-    }
-
-    function endElection() external onlyAdmin {
-        require(electionState == ElectionState.Active, "Not active");
+    function endElection() public onlyAdmin {
+        require(electionState == ElectionState.Ongoing, "Not active");
         electionState = ElectionState.Ended;
     }
 
-    function getCandidatesCount() external view returns (uint) {
-        return candidatesCount;
+    // 🔥 NEW — allows admin to conduct fresh election
+    function resetElection() public onlyAdmin {
+        delete candidates;
+        electionState = ElectionState.NotStarted;
     }
 
-    // ✅ FIXED FUNCTION
+    function vote(uint candidateId) public {
+        require(electionState == ElectionState.Ongoing, "Election not active");
+        require(!hasVoted[msg.sender], "Already voted");
+        require(candidateId < candidates.length, "Invalid candidate");
+
+        candidates[candidateId].votes++;
+        hasVoted[msg.sender] = true;
+    }
+
     function getAllCandidates()
-        external
+        public
         view
         returns (string[] memory names, uint[] memory votes)
     {
-        require(electionState == ElectionState.Ended, "Election not ended");
+        names = new string[](candidates.length);
+        votes = new uint[](candidates.length);
 
-        names = new string[](candidatesCount);
-        votes = new uint[](candidatesCount);
-
-        for (uint i = 1; i <= candidatesCount; i++) {
-            names[i - 1] = candidates[i].name;
-            votes[i - 1] = candidates[i].voteCount;
+        for (uint i = 0; i < candidates.length; i++) {
+            names[i] = candidates[i].name;
+            votes[i] = candidates[i].votes;
         }
+    }
+
+    function getElectionState() public view returns (ElectionState) {
+        return electionState;
     }
 }

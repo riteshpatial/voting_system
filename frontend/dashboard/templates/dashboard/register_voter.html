@@ -1,0 +1,15 @@
+<h2>Register Voter</h2>
+
+{% for message in messages %}
+<p style="color:red">{{ message }}</p>
+{% endfor %}
+
+<form method="post">
+    {% csrf_token %}
+    <input name="voter_address" placeholder="Voter Address"><br><br>
+    <input name="private_key" placeholder="Private Key"><br><br>
+    <button>Register</button>
+</form>
+
+<br>
+<a href="{% url 'admin_panel' %}">Back</a>

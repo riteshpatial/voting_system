@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cast Vote</title>
+
+    <style>
+        .msg-success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .msg-error {
+            color: red;
+            font-weight: bold;
+        }
+
+        .msg-warning {
+            color: orange;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Cast Your Vote</h2>
+
+<!-- ================= MESSAGES ================= -->
+{% if messages %}
+    {% for message in messages %}
+        <p class="
+            {% if message.tags == 'success' %}msg-success{% endif %}
+            {% if message.tags == 'error' %}msg-error{% endif %}
+            {% if message.tags == 'warning' %}msg-warning{% endif %}
+        ">
+            {{ message }}
+        </p>
+    {% endfor %}
+{% endif %}
+<!-- ============================================ -->
+
+<form method="post">
+    {% csrf_token %}
+
+    {% for c in candidates %}
+        <input type="radio" name="candidate_id" value="{{ c.id }}" required>
+        {{ c.name }} <br>
+    {% empty %}
+        <p>No candidates available</p>
+    {% endfor %}
+
+    <br>
+
+    <input type="text" name="private_key" placeholder="Voter Private Key" required>
+
+    <br><br>
+
+    <button type="submit">Submit Vote</button>
+</form>
+
+<br>
+<a href="/">Back</a>
+
+</body>
+</html>

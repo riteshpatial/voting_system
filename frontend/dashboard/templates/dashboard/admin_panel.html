@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Panel</title>
+<style>
+body { background:#f4f6f8; font-family:Arial; }
+.container {
+    width:520px; margin:60px auto;
+    background:white; padding:30px;
+    border-radius:8px;
+}
+button {
+    width:100%; padding:10px;
+    background:#0d6efd; color:white;
+    border:none; border-radius:5px;
+}
+input {
+    width:100%; padding:8px;
+    margin-bottom:10px; border:1px solid #ccc;
+    border-radius:4px;
+}
+.danger { background:#dc3545; }
+.msg { text-align:center; font-weight:bold; color:green; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h2>Admin Panel</h2>
+
+{% for message in messages %}
+<div class="msg">{{ message }}</div>
+{% endfor %}
+<br>
+
+<form method="post" action="{% url 'add_candidate' %}">
+{% csrf_token %}
+<input name="name" placeholder="Candidate Name" required><br><br>
+<button>Add Candidate</button>
+</form>
+<br>
+<form method="post" action="{% url 'start_election' %}">
+{% csrf_token %}
+<button>Start Election</button>
+</form>
+<br>
+<form method="post" action="{% url 'end_election' %}">
+{% csrf_token %}
+<button class="danger">End Election</button>
+</form>
+
+<hr>
+
+<a href="{% url 'register_voter' %}">Register Voter</a> |
+<a href="/">Home</a>
+
+<hr>
+
+<h3>Registered Voters</h3>
+<ul>
+  {% for v in voters %}
+    <li>
+      <b>ID:</b> {{ v.id }} |
+      <b>Address:</b> {{ v.voter_address }}
+    </li>
+  {% empty %}
+    <li>No voters registered</li>
+  {% endfor %}
+</ul>
+
+
+</div>
+</body>
+</html>
