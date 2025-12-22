@@ -4,67 +4,190 @@ import requests
 
 API_BASE = "http://127.0.0.1:5000/api"
 
+
+# ======================
+# HOME
+# ======================
 def home_view(request):
+    """
+    Home page.
+    Message about results should appear ONLY
+    when user clicks 'View Results'.
+    """
+    return render(request, "dashboard/home.html")
+
+
+# ======================
+# ADMIN PANEL
+# ======================
+def admin_panel(request):
+    from .models import Voter
+
+    voters = Voter.objects.all().order_by("-id")
+
+    return render(
+        request,
+        "dashboard/admin_panel.html",
+        {"voters": voters},
+    )
+
+
+# ======================
+# ADMIN ACTIONS
+# ======================
+def add_candidate(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+
+        if not name:
+            messages.error(request, "Candidate name required")
+            return redirect("admin_panel")
+
+        r = requests.post(f"{API_BASE}/add-candidate", json={"name": name})
+
+        if r.status_code == 200:
+            messages.success(request, "Candidate added successfully")
+        else:
+            messages.error(request, "Blockchain error while adding candidate")
+
+    return redirect("admin_panel")
+
+
+def start_election(request):
+    r = requests.post(f"{API_BASE}/start-election")
+
+    if r.status_code == 200:
+        messages.success(request, "Election started")
+    else:
+        messages.error(request, "Election already started or blockchain error")
+
+    return redirect("admin_panel")
+
+
+def end_election(request):
+    r = requests.post(f"{API_BASE}/end-election")
+
+    if r.status_code == 200:
+        messages.success(request, "Election ended")
+    else:
+        messages.error(request, "Election not active or blockchain error")
+
+    return redirect("admin_panel")
+
+
+def reset_election(request):
+    """
+    Reset for next election WITHOUT deleting migrations.
+    Clears local voters only.
+    """
+    from .models import Voter
+
+    Voter.objects.all().delete()
+    messages.success(request, "Local voters cleared. Ready for new election.")
+
+    return redirect("admin_panel")
+
+
+# ======================
+# REGISTER VOTER
+# ======================
+def register_voter(request):
+    from .models import Voter
+
+    if request.method == "POST":
+        voter_address = request.POST.get("voter_address")
+        private_key = request.POST.get("private_key")
+
+        if not voter_address or not private_key:
+            messages.error(request, "All fields required")
+            return redirect("register_voter")
+
+        voter, created = Voter.objects.get_or_create(
+            voter_address=voter_address,
+            defaults={"private_key": private_key},
+        )
+
+        if created:
+            messages.success(request, "Voter registered")
+        else:
+            messages.info(request, "Voter already exists")
+
+        return redirect("admin_panel")
+
+    return render(request, "dashboard/register_voter.html")
+
+
+# ======================
+# CAST VOTE
+# ======================
+def vote_view(request):
+    from .models import Voter
+
+    try:
+        candidates = requests.get(f"{API_BASE}/candidates").json()
+    except Exception:
+        candidates = []
+
+    if request.method == "POST":
+        candidate_id = request.POST.get("candidate_id")
+        private_key = request.POST.get("private_key")
+
+        if not candidate_id or not private_key:
+            messages.error(request, "All fields are required")
+            return redirect("vote")
+
+        if not Voter.objects.filter(private_key=private_key).exists():
+            messages.error(request, "You are not a registered voter")
+            return redirect("vote")
+
+        vr = requests.post(
+            f"{API_BASE}/vote",
+            json={
+                "candidate_id": int(candidate_id),
+                "private_key": private_key,
+            },
+        )
+
+        if vr.status_code == 200:
+            messages.success(request, "Vote cast successfully")
+        else:
+            messages.error(request, "Voting failed or already voted")
+
+        return redirect("vote")
+
+    return render(request, "dashboard/vote.html", {"candidates": candidates})
+
+
+# ======================
+# RESULTS (CRITICAL FIX)
+# ======================
+def results_view(request):
+    """
+    If election NOT ended:
+    - Render HOME page
+    - Show message ONLY HERE
+    - NO redirect, NO global messages
+    """
+
     try:
         state = requests.get(f"{API_BASE}/state").json()["state"]
     except Exception:
         state = 0
 
-    status_msg = {
-        0: "Election not started",
-        1: "Voting is live",
-        2: "Election ended"
-    }[state]
-
-    return render(request, "dashboard/home.html", {
-        "state": state,
-        "status_msg": status_msg
-    })
-
-def admin_panel(request):
-    from .models import Voter
-    voters = Voter.objects.all()
-    return render(request, "dashboard/admin_panel.html", {"voters": voters})
-
-def add_candidate(request):
-    requests.post(f"{API_BASE}/add-candidate", json={"name": request.POST["name"]})
-    return redirect("admin_panel")
-
-def start_election(request):
-    requests.post(f"{API_BASE}/start-election")
-    messages.success(request, "Election started")
-    return redirect("admin_panel")
-
-def end_election(request):
-    requests.post(f"{API_BASE}/end-election")
-    messages.success(request, "Election ended")
-    return redirect("admin_panel")
-
-def reset_election(request):
-    from .models import Voter
-    Voter.objects.all().delete()
-    requests.post(f"{API_BASE}/reset-election")
-    messages.success(request, "New election initialized")
-    return redirect("admin_panel")
-
-def vote_view(request):
-    candidates = requests.get(f"{API_BASE}/candidates").json()
-
-    if request.method == "POST":
-        r = requests.post(f"{API_BASE}/vote", json={
-            "candidate_id": int(request.POST["candidate_id"]),
-            "private_key": request.POST["private_key"]
-        })
-        messages.info(request, r.json()["message"])
-        return redirect("vote")
-
-    return render(request, "dashboard/vote.html", {"candidates": candidates})
-
-def results_view(request):
-    state = requests.get(f"{API_BASE}/state").json()["state"]
+    # Election not ended
     if state != 2:
-        messages.error(request, "Results not available yet")
-        return redirect("home")
+        return render(
+            request,
+            "dashboard/home.html",
+            {
+                "show_result_error": True
+            },
+        )
 
-    results = requests.get(f"{API_BASE}/candidates").json()
+    # Election ended → show results
+    try:
+        results = requests.get(f"{API_BASE}/candidates").json()
+    except Exception:
+        results = []
+
     return render(request, "dashboard/results.html", {"results": results})

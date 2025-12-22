@@ -27,6 +27,12 @@
 
 <div class="box">
     <h2>Blockchain E-Voting System</h2>
+    {% if show_result_error %}
+    <p style="color:rgb(255, 0, 0); font-weight:bold;">
+    Results available only after election ends
+    </p>
+    {% endif %}
+
 
     <a href="/admin-panel/">Admin Panel</a>
     <a href="/vote/">Cast Vote</a>
