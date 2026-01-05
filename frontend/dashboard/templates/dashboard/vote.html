@@ -39,27 +39,50 @@
 {% endif %}
 <!-- ============================================ -->
 
-<form method="post">
-    {% csrf_token %}
-
-    {% for c in candidates %}
-        <input type="radio" name="candidate_id" value="{{ c.id }}" required>
-        {{ c.name }} <br>
-    {% empty %}
-        <p>No candidates available</p>
-    {% endfor %}
+<!-- ======= ELECTION NOT ACTIVE ======= -->
+{% if inactive %}
+    <p class="msg-error">
+        No active election. Voting is currently closed.
+    </p>
 
     <br>
+    <a href="/">Back</a>
 
-    <input type="text" name="private_key" placeholder="Voter Private Key" required>
+<!-- ======= ELECTION ACTIVE ======= -->
+{% else %}
 
-    <br><br>
+    {% if candidates %}
+        <form method="post">
+            {% csrf_token %}
 
-    <button type="submit">Submit Vote</button>
-</form>
+            {% for c in candidates %}
+                <input type="radio" name="candidate_id" value="{{ c.id }}" required>
+                {{ c.name }} <br>
+            {% endfor %}
 
-<br>
-<a href="/">Back</a>
+            <br>
+
+            <input
+                type="text"
+                name="private_key"
+                placeholder="Voter Private Key"
+                required
+            >
+
+            <br><br>
+
+            <button type="submit">Submit Vote</button>
+        </form>
+
+    {% else %}
+        <p class="msg-warning">No candidates available.</p>
+    {% endif %}
+
+    <br>
+    <a href="/">Back</a>
+
+{% endif %}
+<!-- ============================================ -->
 
 </body>
 </html>

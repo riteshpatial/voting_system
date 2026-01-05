@@ -3,23 +3,35 @@
 <head>
     <title>E-Voting System</title>
     <style>
-        body { font-family: Arial; background:#f4f6f8; }
-        .box {
-            width:400px;
-            margin:120px auto;
-            background:white;
-            padding:25px;
-            border-radius:8px;
-            text-align:center;
+        body {
+            font-family: Arial;
+            background: #f4f6f8;
         }
+
+        .box {
+            width: 420px;
+            margin: 120px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
         a {
-            display:block;
-            margin:15px;
-            padding:12px;
-            background:#0d6efd;
-            color:white;
-            text-decoration:none;
-            border-radius:6px;
+            display: block;
+            margin: 15px;
+            padding: 12px;
+            background: #0d6efd;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .error-msg {
+            color: red;
+            font-weight: bold;
+            margin: 15px 0;
         }
     </style>
 </head>
@@ -27,12 +39,13 @@
 
 <div class="box">
     <h2>Blockchain E-Voting System</h2>
-    {% if show_result_error %}
-    <p style="color:rgb(255, 0, 0); font-weight:bold;">
-    Results available only after election ends
-    </p>
-    {% endif %}
 
+    <!-- ✅ RESULT / LOCK MESSAGE (USER ONLY) -->
+    {% if result_error_msg %}
+        <p class="error-msg">
+            {{ result_error_msg }}
+        </p>
+    {% endif %}
 
     <a href="/admin-panel/">Admin Panel</a>
     <a href="/vote/">Cast Vote</a>

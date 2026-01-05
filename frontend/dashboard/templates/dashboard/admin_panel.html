@@ -3,26 +3,54 @@
 <head>
 <title>Admin Panel</title>
 <style>
-body { background:#f4f6f8; font-family:Arial; }
+body {
+    background:#f4f6f8;
+    font-family: Arial;
+}
+
 .container {
-    width:520px; margin:60px auto;
-    background:white; padding:30px;
+    width:520px;
+    margin:60px auto;
+    background:white;
+    padding:30px;
     border-radius:8px;
 }
+
 button {
-    width:100%; padding:10px;
-    background:#0d6efd; color:white;
-    border:none; border-radius:5px;
+    width:100%;
+    padding:12px;
+    background:#0d6efd;
+    color:white;
+    border:none;
+    border-radius:5px;
+    font-size:15px;
+    cursor:pointer;
 }
+
 input {
-    width:100%; padding:8px;
-    margin-bottom:10px; border:1px solid #ccc;
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+    border:1px solid #ccc;
     border-radius:4px;
 }
-.danger { background:#dc3545; }
-.msg { text-align:center; font-weight:bold; color:green; }
+
+.danger {
+    background:#dc3545;
+}
+
+.warning {
+    background:#fd7e14;
+}
+
+.msg {
+    text-align:center;
+    font-weight:bold;
+    margin-bottom:10px;
+}
 </style>
 </head>
+
 <body>
 <div class="container">
 
@@ -31,22 +59,41 @@ input {
 {% for message in messages %}
 <div class="msg">{{ message }}</div>
 {% endfor %}
-<br>
 
+<hr>
+
+<!-- ADD CANDIDATE -->
 <form method="post" action="{% url 'add_candidate' %}">
 {% csrf_token %}
-<input name="name" placeholder="Candidate Name" required><br><br>
+<input name="name" placeholder="Candidate Name" required>
 <button>Add Candidate</button>
 </form>
+
 <br>
+
+<!-- START ELECTION -->
 <form method="post" action="{% url 'start_election' %}">
 {% csrf_token %}
 <button>Start Election</button>
 </form>
+
 <br>
+
+<!-- END ELECTION -->
 <form method="post" action="{% url 'end_election' %}">
 {% csrf_token %}
 <button class="danger">End Election</button>
+</form>
+
+<br>
+
+<!-- RESET ELECTION -->
+<form method="post" action="{% url 'reset_election' %}">
+{% csrf_token %}
+<button class="warning"
+        onclick="return confirm('This will deploy a NEW election and clear all voters. Continue?')">
+    Reset Election (New Cycle)
+</button>
 </form>
 
 <hr>
@@ -67,7 +114,6 @@ input {
     <li>No voters registered</li>
   {% endfor %}
 </ul>
-
 
 </div>
 </body>

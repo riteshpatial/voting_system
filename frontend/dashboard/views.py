@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 import requests
+import subprocess
+import sys
+import os
 
 API_BASE = "http://127.0.0.1:5000/api"
 
@@ -43,7 +46,11 @@ def add_candidate(request):
             messages.error(request, "Candidate name required")
             return redirect("admin_panel")
 
-        r = requests.post(f"{API_BASE}/add-candidate", json={"name": name})
+        try:
+            r = requests.post(f"{API_BASE}/add-candidate", json={"name": name})
+        except Exception:
+            messages.error(request, "Blockchain service not reachable")
+            return redirect("admin_panel")
 
         if r.status_code == 200:
             messages.success(request, "Candidate added successfully")
@@ -57,6 +64,8 @@ def start_election(request):
     r = requests.post(f"{API_BASE}/start-election")
 
     if r.status_code == 200:
+        # 🔓 Unlock results
+        request.session.pop("force_results_lock", None)
         messages.success(request, "Election started")
     else:
         messages.error(request, "Election already started or blockchain error")
@@ -64,8 +73,13 @@ def start_election(request):
     return redirect("admin_panel")
 
 
+
 def end_election(request):
-    r = requests.post(f"{API_BASE}/end-election")
+    try:
+        r = requests.post(f"{API_BASE}/end-election")
+    except Exception:
+        messages.error(request, "Blockchain service not reachable")
+        return redirect("admin_panel")
 
     if r.status_code == 200:
         messages.success(request, "Election ended")
@@ -75,15 +89,26 @@ def end_election(request):
     return redirect("admin_panel")
 
 
+# ======================
+# 🔁 FULL RESET ELECTION
+# ======================
 def reset_election(request):
     """
-    Reset for next election WITHOUT deleting migrations.
-    Clears local voters only.
+    Reset election for new cycle.
+    Blockchain stays same, UI logic resets.
     """
     from .models import Voter
 
+    # Clear local voters
     Voter.objects.all().delete()
-    messages.success(request, "Local voters cleared. Ready for new election.")
+
+    # 🔐 LOCK RESULTS explicitly
+    request.session["force_results_lock"] = True
+
+    messages.success(
+        request,
+        "New election initialized successfully. Results locked."
+    )
 
     return redirect("admin_panel")
 
@@ -123,6 +148,24 @@ def register_voter(request):
 def vote_view(request):
     from .models import Voter
 
+    # 1️⃣ Check election state
+    try:
+        state = requests.get(f"{API_BASE}/state").json()["state"]
+    except Exception:
+        state = 0
+
+    # ❌ Election not active → hide candidates
+    if state != 1:
+        return render(
+            request,
+            "dashboard/vote.html",
+            {
+                "candidates": [],
+                "inactive": True
+            }
+        )
+
+    # 2️⃣ Election active → fetch candidates
     try:
         candidates = requests.get(f"{API_BASE}/candidates").json()
     except Exception:
@@ -155,22 +198,39 @@ def vote_view(request):
 
         return redirect("vote")
 
-    return render(request, "dashboard/vote.html", {"candidates": candidates})
+    return render(
+        request,
+        "dashboard/vote.html",
+        {
+            "candidates": candidates,
+            "inactive": False
+        }
+    )
+
 
 
 # ======================
-# RESULTS (CRITICAL FIX)
+# RESULTS
 # ======================
 def results_view(request):
     """
-    If election NOT ended:
-    - Render HOME page
-    - Show message ONLY HERE
-    - NO redirect, NO global messages
+    Results visible ONLY when:
+    - Election ended
+    - AND not manually locked after reset
     """
 
+    # 🔒 HARD LOCK AFTER RESET
+    if request.session.get("force_results_lock"):
+        return render(
+            request,
+            "dashboard/home.html",
+            {
+                "result_error_msg": "Results are locked. New election has not ended yet."
+            },
+        )
+
     try:
-        state = requests.get(f"{API_BASE}/state").json()["state"]
+        state = requests.get(f"{API_BASE}/state").json().get("state", 0)
     except Exception:
         state = 0
 
@@ -180,7 +240,7 @@ def results_view(request):
             request,
             "dashboard/home.html",
             {
-                "show_result_error": True
+                "result_error_msg": "Results are available only after election ends."
             },
         )
 
@@ -190,4 +250,8 @@ def results_view(request):
     except Exception:
         results = []
 
-    return render(request, "dashboard/results.html", {"results": results})
+    return render(
+        request,
+        "dashboard/results.html",
+        {"results": results}
+    )

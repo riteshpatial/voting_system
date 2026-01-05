@@ -10,6 +10,8 @@ urlpatterns = [
     path("panel/start-election/", views.start_election, name="start_election"),
     path("panel/end-election/", views.end_election, name="end_election"),
     path("panel/reset-election/", views.reset_election, name="reset_election"),
+
+    # REGISTER VOTER  ✅ THIS WAS MISSING
     path("panel/register-voter/", views.register_voter, name="register_voter"),
 
     # VOTER
